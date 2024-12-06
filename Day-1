@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+email="sohamkanoj55@gmail.com"
+subject="System Health Report"
+
+send_email() {
+        local report_content="$1"
+        echo "$report_content" | mail -s "$subject" "$email"
+        echo "Report sent to $email"
+}
+
+cpu_usage() {
+        echo '===CPU-Usage==='
+mpstat | awk '/all/ {print "CPU-Usage: " 100 - $12 "%"}'
+echo ""
+}
+
+disk_usage() {
+        echo '===DISK-Usage==='
+df -h | grep '^/dev/*' | awk -F " " '{print $1, ": " $5 " Used"}'
+echo ""
+}
+
+mem_usage() {
+        echo '===MEMORY-Usage==='
+free -m | awk '/Mem/ {print "MEM-Usage: " $3 / $2 * 100 "%"}'
+echo ""
+}
+
+network_status() {
+        echo "===NETWORK-STATUS==="
+if ping -c 1 8.8.8.8 &> /dev/null; then
+        echo "Internet Connection: ACTIVE"
+else
+        echo "Internet Connection: FAILED"
+fi
+echo ""
+}
+
+service_status() {
+        echo "===SERVICES RUNNING==="
+systemctl list-units --type service --state running
+echo ""
+}
+
+uptime_status() {
+        echo "===SYSTEM UPTIME==="
+uptime | awk -F " " '{print $1, $2, $3, $4, $5, $6}'
+echo ""
+}
+
+all_checks() {
+        report="/tmp/sys_health_report.txt"
+        {
+                echo "Running all System Health Checks..."
+                echo ""
+                cpu_usage
+                disk_usage
+                mem_usage
+                network_status
+                service_status
+                uptime_status
+        } > "$report"
+        cat "$report"
+        send_email "$(cat $report)"
+        rm "$report"
+}
+
+
+menu() {
+        while true; do
+                echo "=================="
+                echo "SYSTEM HEALTH CHECK MENU"
+                echo "1. CPU-Usage"
+                echo "2. DISK-Usage"
+                echo "3. MEMORY-Usage"
+                echo "4. NETWORK-Status"
+                echo "5. SYSTEM-Uptime"
+                echo "6. SERVICE-Status"
+                echo "7. ALL-Checks"
+                echo "8. EXIT"
+                echo "=================="
+                read -p "Choose an option: " choice
+
+                case $choice in
+                        1) cpu_usage ; break;;
+                        2) disk_usage ; break;;
+                        3) mem_usage ; break;;
+                        4) network_status ; break;;
+                        5) uptime_status ; break;;
+                        6) service_status ; break;;
+                        7) all_checks ; break;;
+                        8) echo "Exiting..."; break ;;
+                        *) echo "Invalid Option. Please try again :(" ;;
+                esac
+        done
+}
+
+menu
